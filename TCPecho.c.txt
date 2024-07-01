@@ -1,0 +1,74 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#define BUFLEN 512 // Maksymalna dlugosc bufora
+#define PORT 8888 // Port, na ktorym nasluchuje server
+
+void error(char *s) {
+    perror(s);
+    exit(EXIT_FAILURE);
+}
+
+int main(void) {
+    struct sockaddr_in server_addr, client_addr;
+    int server_sock, client_sock, addr_len, recv_len;
+    char buf[BUFLEN];
+
+    // Tworzenie gniazda TCP
+    if ((server_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+        error("socket");
+    }
+
+    // Inicjalizacja struktury adresu serwera
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+    // Przypisanie adresu i portu do gniazda
+    if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+        error("bind");
+    }
+
+    // Nasluchiwanie na gniezdzie
+    if (listen(server_sock, 10) == -1) {
+        error("listen");
+    }
+
+    addr_len = sizeof(struct sockaddr_in);
+
+    // Akceptowanie polaczenia
+    while(1) {
+        printf("Czekanie na polaczenie...\n");
+        if ((client_sock = accept(server_sock, (struct sockaddr *)&client_addr, (socklen_t*)&addr_len)) == -1) {
+            error("accept");
+        }
+        printf("polaczenie zaakceptowane.\n");
+
+        // Obsluga klienta
+        while ((recv_len = recv(client_sock, buf, BUFLEN, 0)) > 0) {
+            printf("Odebrano wiadomosc od klienta: %s\n", buf);
+
+            // Odsylanie danych do klienta
+            if (send(client_sock, buf, recv_len, 0) == -1) {
+                error("send");
+            }
+            printf("Wyslano odpowiedz do klienta.\n");
+        }
+
+        if (recv_len == 0) {
+            printf("Klient sie rozlaczyl‚.\n");
+        } else if (recv_len == -1) {
+            error("recv");
+        }
+
+        //pclose(client_sock);
+    }
+
+   // pclose(server_sock);
+    return 0;
+}
