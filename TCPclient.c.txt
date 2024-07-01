@@ -1,0 +1,86 @@
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <string.h> 
+#include <unistd.h>
+#include <sys/types.h> 
+#include <sys/socket.h> 
+#include <netinet/in.h> 
+#include <arpa/inet.h>
+#include  <netdb.h>  
+ 
+ 
+ #define BUFLEN 256
+ 
+ 
+// define function that deals with errors 
+	void error(const char *msg) 
+	{ 
+ 	 perror(msg); // print error msg 
+ 	 exit(1); // exit the main() function 
+	} 
+	
+
+int main(int argc, char *argv[]) 
+{ 
+
+	int sockfd, portno, n; // define ints 
+      	struct sockaddr_in serv_addr; // define structs 
+   	struct hostent *server; // defecines host address struct 
+   	
+   	char buffer[BUFLEN];		 // buffer where the message are kept
+	
+	portno = atoi(argv[2]);
+
+
+
+// 1. Creating a socket 
+	
+	if ( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 ){
+	error("Creating a socket failed");
+	}
+	
+	
+	 server = gethostbyname(argv[1]); // get server address (IP)
+	  if (server == NULL) { 
+        	fprintf(stderr,"ERROR, no such host\n"); // if server address is not proper 
+       		 exit(0); // exit main() function 
+          } 
+          
+// 2. Struct define 
+
+	bzero((char *) &serv_addr, sizeof(serv_addr));        
+	serv_addr.sin_family = AF_INET; // define address family (IPv4) 
+	bcopy((char *)server->h_addr,(char *)&serv_addr.sin_addr.s_addr, server->h_length); // copy some (arg3) memory (from arg1) , to other place (arg2) 
+	// -> is used when we call to position of structure by pointer to that struct( server is pointer, it calls to h_lenght from some struct) 
+	serv_addr.sin_port = htons(portno); // assign port 
+	
+	 if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0){
+        error("ERROR connecting"); // if connection failed 
+        }
+        printf("Connected to [IP]: %s \n\n ", inet_ntoa(serv_addr.sin_addr));
+        while(1){
+        
+       		bzero(buffer,BUFLEN); 
+  		printf("Please enter the message: "); // 
+		fgets(buffer,255,stdin); // read into buffer !!!
+		
+		 n = write(sockfd,buffer,strlen(buffer)); // write the msg to socket 
+   			 if (n < 0)  {
+        		 error("ERROR writing to socket"); // writing failed 
+        		 }
+   		 bzero(buffer,BUFLEN); // if writing succeed, zero the buffer 
+   		 
+   		 printf("Waiting for response...\n");
+		  n = read(sockfd,buffer,255); // read from socket into buffer 
+   			 if (n < 0) { 
+         		 error("ERROR reading from socket"); // if reading failed 
+         		 }
+   		 printf("%s\n",buffer); // print buffer 
+	
+	
+	
+	
+	
+	}
+return 0;
+}
