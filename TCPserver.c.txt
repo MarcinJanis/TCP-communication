@@ -1,0 +1,155 @@
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <string.h> 
+#include <unistd.h>
+#include <sys/types.h> 
+#include <sys/socket.h> 
+#include <netinet/in.h> 
+#include <arpa/inet.h>
+ 
+ 
+ #define BUFLEN 256
+ #define MAX_CLI 2
+ 
+// define function that deals with errors 
+	void error(const char *msg) 
+	{ 
+ 	 perror(msg); // print error msg 
+ 	 exit(1); // exit the main() function 
+	} 
+	
+	
+	
+
+	
+	
+	
+int main(int argc, char *argv[]) 
+{ 
+
+int portno[MAX_CLI], serv_sock[MAX_CLI], cli_sock[MAX_CLI]; // define ints
+socklen_t cli_sock_lenght;	 // var for keeping size of client adress
+char buffer1[BUFLEN],buffer2[BUFLEN];		 // buffer where the message are kept
+int n; 				 // var 
+
+socklen_t *pointer_clilen = &cli_sock_lenght;
+
+
+struct sockaddr_in serv_addr , cli1_addr, cli2_addr;
+portno[0] = atoi(argv[1]);
+portno[1] = atoi(argv[2]);	
+	
+// 1. Creating a socket 
+	
+	if ( (serv_sock[0] = socket(AF_INET, SOCK_STREAM, 0)) < 0 ){
+	error("Creating a socket failed");
+	}
+	
+	if ( (serv_sock[1] = socket(AF_INET, SOCK_STREAM, 0)) < 0 ){
+	error("Creating a socket failed");
+	}
+	
+// 2. Define structure	
+
+     bzero((char *) &serv_addr, sizeof(serv_addr)); // OR memset((char *) &si_me, 0, sizeof(si_me)); // put zeros into structure 
+     serv_addr.sin_family = AF_INET; // specify address family (IPv4) 
+     serv_addr.sin_addr.s_addr = INADDR_ANY; // bind IP addresses ( INADDR_ANY = every avaliable
+    
+	
+	
+// 3.1 Bind to first socket 
+	 serv_addr.sin_port = htons(portno[0]); // set port number
+	 if ( bind( serv_sock[0] , (struct sockaddr *) &serv_addr, sizeof(serv_addr) ) < 0)  {
+              error("ERROR on binding"); // error while binding socket 
+              }
+
+// 3.2 Bind to first socket 
+	 serv_addr.sin_port = htons(portno[1]); // set port number
+	 if ( bind( serv_sock[1] , (struct sockaddr *) &serv_addr, sizeof(serv_addr) ) < 0)  {
+              error("ERROR on binding"); // error while binding socket 
+              }
+
+
+// 4. Listening on created socket 
+
+	listen(serv_sock[0],MAX_CLI); // on specific socket, max amount of client watiting for connection
+	//cli_sock_lenght = sizeof(cli_addr); // size of addres of client
+	
+	listen(serv_sock[1],MAX_CLI); // on specific socket, max amount of client watiting for connection
+	
+	cli_sock_lenght = sizeof(serv_addr); 
+	
+// 5. Creating new socket for connection (?) 
+
+
+	cli_sock[0] = accept (serv_sock[0], (struct sockaddr *) &cli1_addr, &cli_sock_lenght);
+	if (cli_sock < 0)  error("ERROR on accept");
+	printf("Connection on port: %d \n " , portno[0] );
+	
+	cli_sock[1] = accept (serv_sock[1], (struct sockaddr *) &cli2_addr, &cli_sock_lenght);
+	if (cli_sock < 0)  error("ERROR on accept");
+	
+	printf("Connection on port: %d \n " , portno[2] );
+	
+	printf("Connected! \n");
+	
+	
+// 6. Infinite loop
+		while (1){
+			
+			bzero(buffer1, BUFLEN); // flush the buffer
+			bzero(buffer2, BUFLEN); // flush the buffer
+			
+			// Receving message from first client
+			n = recvfrom( cli_sock[0] , buffer1 , BUFLEN , 0 , (struct sockaddr *) &cli1_addr , pointer_clilen );      
+			if ( n < 0 ) error("Reciving messange failed");
+			
+			printf("Receved package from %s:%d \n",  inet_ntoa(cli1_addr.sin_addr) , ntohs(cli1_addr.sin_port) );
+			printf("Data: %s \n\n", buffer1);
+			
+			
+			// Receving message from second client
+			n = recvfrom( cli_sock[1] , buffer2 , BUFLEN , 0 , (struct sockaddr *) &cli2_addr , pointer_clilen );      
+			if ( n < 0 ) error("Reciving messange failed");
+			
+			printf("Receved package from %s:%d \n",  inet_ntoa(cli2_addr.sin_addr) , ntohs(cli2_addr.sin_port) );
+			printf("Data: %s \n\n", buffer2);
+			
+			// Sending to first
+			
+			n = sendto( cli_sock[0] , buffer2 , BUFLEN , 0 , (struct sockaddr *) &cli1_addr , *pointer_clilen );
+			if ( n < 0 ) error("Responding messange failed");
+			
+			
+			// Sending to second
+			
+			n = sendto( cli_sock[1] , buffer1 , BUFLEN , 0 , (struct sockaddr *) &cli2_addr , *pointer_clilen );
+			if ( n < 0 ) error("Responding messange failed");
+		}
+
+
+
+
+
+return 0;
+
+
+}
+
+
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+	
+	
